@@ -20,7 +20,10 @@ public:
         tf::Transform transform;
 
         transform.setOrigin(tf::Vector3(msg->pose.pose.position.x,msg->pose.pose.position.y, msg->pose.pose.position.z));
-        transform.setRotation(msg->pose.pose.orientation);
+        
+        tf::Quaternion q;
+        quaternionMsgToTF(msg->pose.pose.orientation, q)
+        transform.setRotation(q);
 
         broadcaster.sendTransform(tf::StampedTransform(transform, ros::Time::now(),root_frame.c_str(),child_frame.c_str()));
     }

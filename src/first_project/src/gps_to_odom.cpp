@@ -2,6 +2,8 @@
 #include "nav_msgs/Odometry.h"
 #include <math.h>
 
+#define PI 3.14159
+
 #define A_COST 6378137
 #define B_COST 6356752
 #define E_COST 0.006694478197993d
@@ -51,21 +53,45 @@ private:
         z_enu = cos(lat_r)*cos(lon_r)*dx  -cos(lat_r)*sin(lon_r)*dy  +sin(lat_r)*dz;
     }
 
+    static double angle(double x, double y) {
+        if (x == 0) return PI/2.0;
+
+        double a = atan(y/x);
+
+        if(x < 0) a+= PI;
+
+        return a; 
+    }
 public:
     void GPSCallback(const sensor_msgs::NavSatFixConstPtr& msg) {
         nav_msgs::Odometry current_odom;
-        current_odom.header.seq = msg.header.seq;
-        current_odom.header.stamp = msg.header.stamp;
-        current_odom.header.frame_id = msg.header.frame_id;
+        current_odom.header.seq = msg->header.seq;
+        current_odom.header.stamp = msg->header.stamp;
+        current_odom.header.frame_id = msg->header.frame_id;
 
         double x,y,z;
-        this->GPStoENU(msg.latitude, msg.longitude, msg.altitude, x,y,z);
+        GPStoENU(msg->latitude, msg->longitude, msg->altitude, x,y,z);
 
         current_odom.pose.pose.position.x = x;
         current_odom.pose.pose.position.y = y;
         current_odom.pose.pose.position.z = z;
 
-        // TODO: compute orientation
+        double dx = current_otom.pose.pose.position.x - last_odom.pose.pose.position.x,
+                dy = current_otom.pose.pose.position.y - last_odom.pose.pose.position.y,
+                dz = current_otom.pose.pose.position.z - last_odom.pose.pose.position.z;
+
+        double roll = angle(y,z), 
+                pitch = angle(z,x), 
+                yaw = angle(x,y); 
+
+        tf::Quaternion q;
+        q.setRPY(roll, pitch, yaw);
+
+        current_odom.pose.pose.orientation.x = q.getX();
+        current_odom.pose.pose.orientation.y = q.getY();
+        current_odom.pose.pose.orientation.z = q.getZ();
+        current_odom.pose.pose.orientation.w = q.getW();
+
 
         last_odom.pose.pose.position.x = current_odom.pose.pose.position.x;
         last_odom.pose.pose.position.y = current_odom.pose.pose.position.y;
