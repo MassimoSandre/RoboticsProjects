@@ -1,22 +1,42 @@
-#include "ros/ros.h"
-#include "nav_msgs/Odometry.h"
+#include <ros/ros.h>
+#include <nav_msgs/Odometry.h>
+#include <sensor_msgs/PointCloud2.h>
+#include <dynamic_reconfigure/server.h>
+#include <first_project/parametersConfig.h>
 
 class lidar_remap {
 private:
     ros::NodeHandle nh;
-    ris::NodeHandle nh_private;
+    ros::NodeHandle nh_private;
 
     ros::Subscriber points_sub;
     ros::Publisher points_pub;
 
+    std::string frame;
+    
+    dynamic_reconfigure::Server<first_project::parametersConfig> server;
+
 public:
-    void callback(const sensor_msgs::PointCloud2::ConstPtr& msg) {
-        
+
+    void param_callback(first_project::parametersConfig &config, uint32_t level) {
+        this->frame = config.int_param == 0 ? "wheel_odom" : "gps_odom";
     }
 
-    int lidar_remap() : nh_private("~") {
-        points_sub = nh.subscribe("/os_cloud_nose/points", 1, &pub_sub::callback, this);
+    void callback(const sensor_msgs::PointCloud2ConstPtr& msg) {
+        sensor_msgs::PointCloud2 new_msg = *msg;
+
+        new_msg.header.frame_id = this->frame.c_str();
+    }
+
+    lidar_remap() : nh_private("~") {
+        points_sub = nh.subscribe("/os_cloud_nose/points", 1, &lidar_remap::callback, this);
         points_pub = nh.advertise<nav_msgs::Odometry>("/pointcloud_remapped", 1);
+
+        
+        dynamic_reconfigure::Server<first_project::parametersConfig>::CallbackType f;
+
+        f = boost::bind(&lidar_remap::param_callback, this, _1, _2);
+        server.setCallback(f);
 
     }
 };

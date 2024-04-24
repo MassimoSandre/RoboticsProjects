@@ -1,6 +1,8 @@
-#include "ros/ros.h"
-#include "nav_msgs/Odometry.h"
+#include <ros/ros.h>
+#include <nav_msgs/Odometry.h>
+#include <sensor_msgs/NavSatFix.h>
 #include <math.h>
+#include <tf/LinearMath/Quaternion.h>
 
 #define PI 3.14159
 
@@ -16,7 +18,7 @@ private:
     int count;
 
     ros::NodeHandle nh;
-    ris::NodeHandle nh_private;
+    ros::NodeHandle nh_private;
 
     ros::Subscriber gps_sub;
     ros::Publisher odom_pub;
@@ -25,12 +27,12 @@ private:
 
     static double aux_N(double par) {
         double t1 = sin(par);
-        double t2 = 1.0d - (E_COST*E_COST * t1*t1)
+        double t2 = 1.0d - (E_COST*E_COST * t1*t1);
 
         return A_COST / sqrt(t2);
     }
 
-    static void GPStoECEF(double lat, double lon, double alt,
+    void GPStoECEF(double lat, double lon, double alt,
                         double &x_ecef, double &y_ecef, double &z_ecef) {
         double n = aux_N(lat);
 
@@ -39,9 +41,9 @@ private:
         z_ecef = (n * (1.0d - E_COST * E_COST) + alt) * sin(lat);
     }
 
-    static void GPStoENU(double lat, double lon, double alt,
+    void GPStoENU(double lat, double lon, double alt,
                     double &x_enu, double &y_enu, double &z_enu)  {
-        int x_p_ecef, y_p_ecef, z_p_ecef;
+        double x_p_ecef, y_p_ecef, z_p_ecef;
         GPStoECEF(lat, lon, alt,  x_p_ecef, y_p_ecef, z_p_ecef);
 
         double  dx = x_p_ecef - x_r_ecef,
@@ -76,46 +78,48 @@ public:
         current_odom.pose.pose.position.y = y;
         current_odom.pose.pose.position.z = z;
 
-        double dx = current_otom.pose.pose.position.x - last_odom.pose.pose.position.x,
-                dy = current_otom.pose.pose.position.y - last_odom.pose.pose.position.y,
-                dz = current_otom.pose.pose.position.z - last_odom.pose.pose.position.z;
+        if (count > 0) {
+            double dx = current_odom.pose.pose.position.x - last_odom.pose.pose.position.x,
+                    dy = current_odom.pose.pose.position.y - last_odom.pose.pose.position.y,
+                    dz = current_odom.pose.pose.position.z - last_odom.pose.pose.position.z;
 
-        double roll = angle(y,z), 
-                pitch = angle(z,x), 
-                yaw = angle(x,y); 
+            double roll = angle(y,z), 
+                    pitch = angle(-x,z), 
+                    yaw = angle(x,y); 
 
-        tf::Quaternion q;
-        q.setRPY(roll, pitch, yaw);
+            tf::Quaternion q;
+            q.setRPY(roll, pitch, yaw);
 
-        current_odom.pose.pose.orientation.x = q.getX();
-        current_odom.pose.pose.orientation.y = q.getY();
-        current_odom.pose.pose.orientation.z = q.getZ();
-        current_odom.pose.pose.orientation.w = q.getW();
+            current_odom.pose.pose.orientation.x = q.getX();
+            current_odom.pose.pose.orientation.y = q.getY();
+            current_odom.pose.pose.orientation.z = q.getZ();
+            current_odom.pose.pose.orientation.w = q.getW();
+        }
 
 
         last_odom.pose.pose.position.x = current_odom.pose.pose.position.x;
         last_odom.pose.pose.position.y = current_odom.pose.pose.position.y;
         last_odom.pose.pose.position.z = current_odom.pose.pose.position.z;
-        odom.header.stamp = current_odom.header.stamp;
+        last_odom.header.stamp = current_odom.header.stamp;
 
         count++;
 
-        odom_pub.publish(odom);
+        odom_pub.publish(current_odom);
     }
 
-    int gps_to_odom() : nh_private("~") {
-        gps_sub = nh.subscribe("/fix", 1, &pub_sub::GPSCallback, this);
+    gps_to_odom() : nh_private("~") {
+        gps_sub = nh.subscribe("/fix", 1, &gps_to_odom::GPSCallback, this);
         odom_pub = nh.advertise<nav_msgs::Odometry>("/gps_odom", 1);
 
         count = 0;
 
         // gets the GPS coordinates of the references point
-        float t;
-        nh_private.getParam("lat_r", t);
+        double t;
+        this->nh_private.getParam("lat_r", t);
         lat_r = t;
-        nh_private.getParam("lon_r", t);
+        this->nh_private.getParam("lon_r", t);
         lon_r = t;
-        nh_private.getParam("alt_r", t);
+        this->nh_private.getParam("alt_r", t);
         alt_r = t;
 
         // computes the ECEF coordinates of the reference point

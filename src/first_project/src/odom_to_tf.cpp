@@ -1,12 +1,12 @@
-#include "ros/ros.h"
-#include "nav_msgs/Odometry.h"
+#include <ros/ros.h>
+#include <nav_msgs/Odometry.h>
 #include <math.h>
 #include <tf/transform_broadcaster.h>
 
 class odom_to_tf {
 private:
     ros::NodeHandle nh;
-    ris::NodeHandle nh_private;
+    ros::NodeHandle nh_private;
 
     ros::Subscriber odom_sub;
     
@@ -22,14 +22,14 @@ public:
         transform.setOrigin(tf::Vector3(msg->pose.pose.position.x,msg->pose.pose.position.y, msg->pose.pose.position.z));
         
         tf::Quaternion q;
-        quaternionMsgToTF(msg->pose.pose.orientation, q)
+        quaternionMsgToTF(msg->pose.pose.orientation, q);
         transform.setRotation(q);
 
         broadcaster.sendTransform(tf::StampedTransform(transform, ros::Time::now(),root_frame.c_str(),child_frame.c_str()));
     }
 
-    int odom_to_tf() : nh_private("~") {
-        odom_sub = nh.subscribe("/input_odom", 1, &pub_sub::OdomCallback, this);
+    odom_to_tf() : nh_private("~") {
+        odom_sub = nh.subscribe("/input_odom", 1, &odom_to_tf::OdomCallback, this);
         
         nh_private.getParam("root_frame", root_frame);
         nh_private.getParam("child_frame", child_frame);
