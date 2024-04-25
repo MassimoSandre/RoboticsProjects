@@ -23,6 +23,17 @@ public:
         
         tf::Quaternion q;
         quaternionMsgToTF(msg->pose.pose.orientation, q);
+        
+        // ROS_INFO("received: east=%f, north=%f, up=%f \n orientation: x=%f,  y=%f,  z=%f, w=%f\n",
+        //         msg->pose.pose.position.x,
+        //         msg->pose.pose.position.y,
+        //         msg->pose.pose.position.z,
+        //         msg->pose.pose.orientation.x,
+        //         msg->pose.pose.orientation.y,
+        //         msg->pose.pose.orientation.z,
+        //         msg->pose.pose.orientation.w
+        //     );
+
         transform.setRotation(q);
 
         broadcaster.sendTransform(tf::StampedTransform(transform, ros::Time::now(),root_frame.c_str(),child_frame.c_str()));

@@ -1,12 +1,12 @@
 <launch>
     <node pkg="first_project" name="gps_to_odom" type="gps_to_odom">
-        <param name="lon_r" type="double" value="0.0" />
-        <param name="lat_r" type="double" value="0.0" />
-        <param name="alt_r" type="double" value="0.0" />
+        <param name="lat_r" type="double" value="45.47766944833333724318" />
+        <param name="lon_r" type="double" value="9.22674017666666834714" />
+        <param name="alt_r" type="double" value="169.04099999999999681677" />
     </node>
 
     <node pkg="first_project" name="wheel_odom_to_tf" type="odom_to_tf">
-        <remap from="input_odom" to="wheel_odom"/>
+        <remap from="input_odom" to="odom"/>
         <param name="root_frame" type="str" value="world" />
         <param name="child_frame" type="str" value="wheel_odom" />
     </node>
@@ -20,5 +20,7 @@
     <node pkg="first_project" name="lidar_remap" type="lidar_remap"/>
 
     <node name="rviz" pkg="rviz" type="rviz" />
+
+    <node name="rqt_reconfigure" pkg="rqt_reconfigure" type="rqt_reconfigure"/>
 
 </launch>

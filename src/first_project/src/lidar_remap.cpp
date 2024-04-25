@@ -26,11 +26,14 @@ public:
         sensor_msgs::PointCloud2 new_msg = *msg;
 
         new_msg.header.frame_id = this->frame.c_str();
+        new_msg.header.stamp = ros::Time::now();
+
+        points_pub.publish(new_msg);
     }
 
     lidar_remap() : nh_private("~") {
-        points_sub = nh.subscribe("/os_cloud_nose/points", 1, &lidar_remap::callback, this);
-        points_pub = nh.advertise<nav_msgs::Odometry>("/pointcloud_remapped", 1);
+        points_sub = nh.subscribe("/os_cloud_node/points", 1, &lidar_remap::callback, this);
+        points_pub = nh.advertise<sensor_msgs::PointCloud2>("/pointcloud_remapped", 1);
 
         
         dynamic_reconfigure::Server<first_project::parametersConfig>::CallbackType f;

@@ -4,16 +4,22 @@
 #include <math.h>
 #include <tf/LinearMath/Quaternion.h>
 
-#define PI 3.14159
+#define PI 3.14159d
 
-#define A_COST 6378137
-#define B_COST 6356752
-#define E_COST 0.006694478197993d
+#define DEG_TO_RAD PI/180.0d
+
+/*
+#define A_COST 6378137.0d
+#define B_COST 6356752.0d
+#define E_SQR_COST 0.006694478197993d
+*/
 
 class gps_to_odom {
 private:
     double lat_r, lon_r, alt_r;
     double x_r_ecef, y_r_ecef, z_r_ecef;
+
+    double last_pitch, last_yaw;
 
     int count;
 
@@ -25,20 +31,22 @@ private:
 
     nav_msgs::Odometry last_odom;
 
-    static double aux_N(double par) {
-        double t1 = sin(par);
-        double t2 = 1.0d - (E_COST*E_COST * t1*t1);
+    double A_CONST = 6378137.0d, B_CONST = 6356752.314d, E_SQR_CONST;
 
-        return A_COST / sqrt(t2);
+    double aux_N(double par) {
+        double t1 = sin(par);
+        double t2 = 1.0d - (E_SQR_CONST * t1*t1);
+
+        return A_CONST / sqrt(t2);
     }
 
     void GPStoECEF(double lat, double lon, double alt,
                         double &x_ecef, double &y_ecef, double &z_ecef) {
         double n = aux_N(lat);
 
-        x_ecef = (n + alt) * cos(lat) * sin(lon);
+        x_ecef = (n + alt) * cos(lat) * cos(lon);
         y_ecef = (n + alt) * cos(lat) * sin(lon);
-        z_ecef = (n * (1.0d - E_COST * E_COST) + alt) * sin(lat);
+        z_ecef = (n * (1.0d - E_SQR_CONST) + alt) * sin(lat);
     }
 
     void GPStoENU(double lat, double lon, double alt,
@@ -52,27 +60,45 @@ private:
 
         x_enu = -sin(lon_r)*dx + cos(lon_r)*dy;
         y_enu = -sin(lat_r)*cos(lon_r)*dx  -sin(lat_r)*sin(lon_r)*dy  +cos(lat_r)*dz;
-        z_enu = cos(lat_r)*cos(lon_r)*dx  -cos(lat_r)*sin(lon_r)*dy  +sin(lat_r)*dz;
+        z_enu = cos(lat_r)*cos(lon_r)*dx  +cos(lat_r)*sin(lon_r)*dy  +sin(lat_r)*dz;
     }
 
-    static double angle(double x, double y) {
-        if (x == 0) return PI/2.0;
+    static void orientation(double x, double y, double z, double last_pitch, double last_yaw, double &pitch, double &yaw) {
+        if (x == 0 && y == 0) {
+            if(z != 0) {
+                pitch = PI/2.0d;
+            }
+            else {
+                pitch = last_pitch;
+            }
+        } 
+        else {
+            pitch = atan2(z, sqrt(x*x + y*y));
+        }
 
-        double a = atan(y/x);
-
-        if(x < 0) a+= PI;
-
-        return a; 
+        if(x == 0) {
+            if(y != 0) {
+                yaw = PI/2.0d;
+            }
+            else {
+                yaw = last_yaw;
+            }
+        }
+        else {
+            yaw = atan2(y,x);
+        }
     }
 public:
     void GPSCallback(const sensor_msgs::NavSatFixConstPtr& msg) {
         nav_msgs::Odometry current_odom;
         current_odom.header.seq = msg->header.seq;
         current_odom.header.stamp = msg->header.stamp;
-        current_odom.header.frame_id = msg->header.frame_id;
+
+        std::string frame_id = "gps_odom";
+        current_odom.header.frame_id = frame_id.c_str();
 
         double x,y,z;
-        GPStoENU(msg->latitude, msg->longitude, msg->altitude, x,y,z);
+        GPStoENU(msg->latitude * DEG_TO_RAD, msg->longitude * DEG_TO_RAD, msg->altitude, x,y,z);
 
         current_odom.pose.pose.position.x = x;
         current_odom.pose.pose.position.y = y;
@@ -83,18 +109,57 @@ public:
                     dy = current_odom.pose.pose.position.y - last_odom.pose.pose.position.y,
                     dz = current_odom.pose.pose.position.z - last_odom.pose.pose.position.z;
 
-            double roll = angle(y,z), 
-                    pitch = angle(-x,z), 
-                    yaw = angle(x,y); 
+            double pitch, yaw; 
+            if(count > 1) {
+                orientation(dx, dy, dz, last_pitch, last_yaw, pitch, yaw);
+            }
+            else {
+                orientation(dx, dy, dz, 0, 0, pitch, yaw);
+            }
+
+            last_pitch = pitch;
+            last_yaw = yaw;
 
             tf::Quaternion q;
-            q.setRPY(roll, pitch, yaw);
+            q.setRPY(0, pitch, yaw);
+            
 
             current_odom.pose.pose.orientation.x = q.getX();
             current_odom.pose.pose.orientation.y = q.getY();
             current_odom.pose.pose.orientation.z = q.getZ();
             current_odom.pose.pose.orientation.w = q.getW();
+
+            // ROS_INFO("received: east=%f, north=%f, up=%f \n orientation: x=%f,  y=%f,  z=%f, w=%f\n pitch=%f, yaw=%f\n",
+            //     current_odom.pose.pose.position.x,
+            //     current_odom.pose.pose.position.y,
+            //     current_odom.pose.pose.position.z,
+            //     current_odom.pose.pose.orientation.x,
+            //     current_odom.pose.pose.orientation.y,
+            //     current_odom.pose.pose.orientation.z,
+            //     current_odom.pose.pose.orientation.w,
+            //     pitch,
+            //     yaw
+            // );
         }
+        else {
+            current_odom.pose.pose.orientation.x = 0;
+            current_odom.pose.pose.orientation.y = 0;
+            current_odom.pose.pose.orientation.z = 0;
+            current_odom.pose.pose.orientation.w = 1;
+        }
+        // else {
+        //     ROS_INFO("FIRST received: east=%f, north=%f, up=%f \n orientation: x=%f,  y=%f,  z=%f, w=%f\n pitch=%f, yaw=%f\n",
+        //         current_odom.pose.pose.position.x,
+        //         current_odom.pose.pose.position.y,
+        //         current_odom.pose.pose.position.z,
+        //         0,
+        //         0,
+        //         0,
+        //         0,
+        //         0,
+        //         0
+        //     );
+        // }
 
 
         last_odom.pose.pose.position.x = current_odom.pose.pose.position.x;
@@ -105,6 +170,9 @@ public:
         count++;
 
         odom_pub.publish(current_odom);
+
+        
+              
     }
 
     gps_to_odom() : nh_private("~") {
@@ -113,12 +181,15 @@ public:
 
         count = 0;
 
+        double t = B_CONST/A_CONST;
+        t *= t;
+        E_SQR_CONST = 1 - t;
+
         // gets the GPS coordinates of the references point
-        double t;
         this->nh_private.getParam("lat_r", t);
-        lat_r = t;
+        lat_r = t * DEG_TO_RAD;
         this->nh_private.getParam("lon_r", t);
-        lon_r = t;
+        lon_r = t * DEG_TO_RAD;
         this->nh_private.getParam("alt_r", t);
         alt_r = t;
 
