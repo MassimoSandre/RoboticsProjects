@@ -3,42 +3,54 @@
 #include <math.h>
 #include <tf/transform_broadcaster.h>
 
+/**
+ * odom_to_tf node that reads Odometry messages from /input_odom (can be remapped).
+ * For each message received, it gets broadcasted as a tf transformation.
+ * Requires root and child frame provided as params in the node's namespace.
+*/
 class odom_to_tf {
 private:
+    // node handles, private one used to access the node's param
     ros::NodeHandle nh;
     ros::NodeHandle nh_private;
 
+    // subscriber for the Odometry messages
     ros::Subscriber odom_sub;
     
+    // broadcaster for the transformation
     tf::TransformBroadcaster broadcaster;
 
+    // the root and child frame
     std::string root_frame;
     std::string child_frame;
 
 public:
+    /**
+     * Callback function triggered when an Odometry message is received.
+     * Broadcasts the data through TF.
+     * 
+     * @param msg a pointer to the message containing the Odometry data
+    */
     void OdomCallback(const nav_msgs::OdometryConstPtr& msg) {
         tf::Transform transform;
 
+        // setting the location of the robot
         transform.setOrigin(tf::Vector3(msg->pose.pose.position.x,msg->pose.pose.position.y, msg->pose.pose.position.z));
         
+        // setting the heading of the robot
         tf::Quaternion q;
         quaternionMsgToTF(msg->pose.pose.orientation, q);
-        
-        // ROS_INFO("received: east=%f, north=%f, up=%f \n orientation: x=%f,  y=%f,  z=%f, w=%f\n",
-        //         msg->pose.pose.position.x,
-        //         msg->pose.pose.position.y,
-        //         msg->pose.pose.position.z,
-        //         msg->pose.pose.orientation.x,
-        //         msg->pose.pose.orientation.y,
-        //         msg->pose.pose.orientation.z,
-        //         msg->pose.pose.orientation.w
-        //     );
-
         transform.setRotation(q);
 
+        // broadcasting the transformation
         broadcaster.sendTransform(tf::StampedTransform(transform, ros::Time::now(),root_frame.c_str(),child_frame.c_str()));
     }
 
+    /**
+     * Builds the odom_to_tf node object.
+     * Subscribes to the /input_odom topic.
+     * Reads the root and child frame from the node's params.
+    */
     odom_to_tf() : nh_private("~") {
         odom_sub = nh.subscribe("/input_odom", 1, &odom_to_tf::OdomCallback, this);
         
