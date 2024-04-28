@@ -1,25 +1,35 @@
 <launch>
+    <!-- LAUNCH gps_to_odom NODE WITH REFERENCE POINT SET AS THE STARTING LOCATION OF THE ROBOT -->
     <node pkg="first_project" name="gps_to_odom" type="gps_to_odom">
         <param name="lat_r" type="double" value="45.47766944833333724318" />
         <param name="lon_r" type="double" value="9.22674017666666834714" />
         <param name="alt_r" type="double" value="169.04099999999999681677" />
     </node>
+
+    <!-- LAUNCH odom_to_tf NODE THAT PUBLISHES TRANSFORMATION FROM WHEEL ODOMETRY -->
     <node pkg="first_project" name="wheel_odom_to_tf" type="odom_to_tf">
         <remap from="input_odom" to="odom"/>
         <param name="root_frame" type="str" value="world" />
         <param name="child_frame" type="str" value="wheel_odom" />
     </node>
 
+    <!-- LAUNCH odom_to_tf NODE THAT PUBLISHES TRANSFORMATION FROM GPS ODOMETRY -->
     <node pkg="first_project" name="gps_odom_to_tf" type="odom_to_tf">
         <remap from="input_odom" to="gps_odom"/>
         <param name="root_frame" type="str" value="world" />
         <param name="child_frame" type="str" value="gps_odom" />
     </node>
 
+    <!-- LAUNCH lidar_remap NODE -->
     <node pkg="first_project" name="lidar_remap" type="lidar_remap"/>
 
-    <node name="rviz" pkg="rviz" type="rviz" />
+    <!-- LAUNCH CLEAR rviz -->
+    <!-- <node name="rviz" pkg="rviz" type="rviz" /> -->
 
+    <!-- LAUNCH rviz LOADING CONFIG FROM FILE -->
+    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find first_project)/rviz/config.rviz" />
+
+    <!-- LAUNCH rqt_reconfigure TO SET lidar_remap FRAME -->
     <node name="rqt_reconfigure" pkg="rqt_reconfigure" type="rqt_reconfigure"/>
 
 </launch>

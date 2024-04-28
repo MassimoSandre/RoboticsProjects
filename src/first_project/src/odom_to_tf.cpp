@@ -8,21 +8,21 @@
  * For each message received, it gets broadcasted as a tf transformation.
  * Requires root and child frame provided as params in the node's namespace.
 */
-class odom_to_tf {
+class OdomToTF {
 private:
     // node handles, private one used to access the node's param
     ros::NodeHandle nh;
-    ros::NodeHandle nh_private;
+    ros::NodeHandle nhPrivate;
 
     // subscriber for the Odometry messages
-    ros::Subscriber odom_sub;
+    ros::Subscriber odomSub;
     
     // broadcaster for the transformation
     tf::TransformBroadcaster broadcaster;
 
     // the root and child frame
-    std::string root_frame;
-    std::string child_frame;
+    std::string rootFrame;
+    std::string childFrame;
 
 public:
     /**
@@ -31,7 +31,7 @@ public:
      * 
      * @param msg a pointer to the message containing the Odometry data
     */
-    void OdomCallback(const nav_msgs::OdometryConstPtr& msg) {
+    void odometryCallback(const nav_msgs::OdometryConstPtr& msg) {
         tf::Transform transform;
 
         // setting the location of the robot
@@ -43,7 +43,7 @@ public:
         transform.setRotation(q);
 
         // broadcasting the transformation
-        broadcaster.sendTransform(tf::StampedTransform(transform, ros::Time::now(),root_frame.c_str(),child_frame.c_str()));
+        broadcaster.sendTransform(tf::StampedTransform(transform, ros::Time::now(),rootFrame.c_str(),childFrame.c_str()));
     }
 
     /**
@@ -51,17 +51,17 @@ public:
      * Subscribes to the /input_odom topic.
      * Reads the root and child frame from the node's params.
     */
-    odom_to_tf() : nh_private("~") {
-        odom_sub = nh.subscribe("/input_odom", 1, &odom_to_tf::OdomCallback, this);
+    OdomToTF() : nhPrivate("~") {
+        odomSub = nh.subscribe("/input_odom", 1, &OdomToTF::odometryCallback, this);
         
-        nh_private.getParam("root_frame", root_frame);
-        nh_private.getParam("child_frame", child_frame);
+        nhPrivate.getParam("root_frame", rootFrame);
+        nhPrivate.getParam("child_frame", childFrame);
     }
 };
 
 int main(int argc, char **argv){
     ros::init(argc, argv, "odom_to_tf");
-    odom_to_tf o;
+    OdomToTF o;
     ros::spin();
 
     return 0;
