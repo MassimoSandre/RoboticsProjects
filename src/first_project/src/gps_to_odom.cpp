@@ -6,8 +6,8 @@
 
 // Set ROTATE_REF_SYSTEM_TO_MATCH_WHEEL_ODOMETRY = false    to use the ENU reference system for the GPS odometry.
 // Set ROTATE_REF_SYSTEM_TO_MATCH_WHEEL_ODOMETRY = true     to make the GPS odometry reference system "match" the wheel odometry one
-//                                                          The new reference system is not ENU anymore. Used to check that the two odometries descrbe
-//                                                          the same movement. The wheel odometry tend then to diverge from the right path because of errors
+//                                                          The new reference system is not ENU anymore. Used to check that the two measurements descirbe
+//                                                          the same movement. The wheel odometry tend to diverge from the actual path because of errors
 #define ROTATE_REF_SYSTEM_TO_MATCH_WHEEL_ODOMETRY false
 #define ROTATION_ANGLE 130
 
@@ -15,15 +15,14 @@
 #define DEG_TO_RAD PI/180.0d
 
 
+// constants used to perform the convertion from LLA to ECEF coordinates
 #define A_CONST 6378137.0d
 #define B_CONST 6356752.0d
-
-// E_SQR = 1 - (B/A)^2
-#define E_SQR_CONST 0.006694478197993d
+#define E_SQR_CONST 0.006694478197993d // E_SQR = 1 - (B/A)^2
 
 /**
  * gps_to_odom node that reads NavSatFix messages from /fix.
- * For each message received, it publishes a Odometry message representing the ENU location.
+ * For each message received, it publishes an Odometry message representing the ENU location.
  * Requires LLA coordinates for the reference point provided as params in the node's namespace.
 */
 class GPSToOdom {
@@ -37,7 +36,7 @@ private:
     // the previous heading of the robot, used when the robot stays still
     double lastHeading;
 
-    // node handles, private one used to access the node's param
+    // node handles, private one used to access the node's params
     ros::NodeHandle nh;
     ros::NodeHandle nhPrivate;
 
@@ -77,9 +76,9 @@ private:
      * @param lat the latitude of the location whose coordinates need to be converted
      * @param lon the longitude of the location whose coordinates need to be converted
      * @param lat the altitude of the location whose coordinates need to be converted
-     * @param x the container for the component of the ECEF point that lays on the X axis
-     * @param y the container for the component of the ECEF point that lays on the Y axis
-     * @param z the container for the component of the ECEF point that lays on the Z axis
+     * @param x the container for the component of the ECEF point that lies on the X axis
+     * @param y the container for the component of the ECEF point that lies on the Y axis
+     * @param z the container for the component of the ECEF point that lies on the Z axis
     */
     void GPStoECEF(double lat, double lon, double alt,
                     double &x, double &y, double &z) {
@@ -99,18 +98,18 @@ private:
      * @param lat the latitude of the location whose coordinates need to be converted
      * @param lon the longitude of the location whose coordinates need to be converted
      * @param lat the altitude of the location whose coordinates need to be converted
-     * @param e the container for the component of the ENU point that lays on the axis pointing East
-     * @param n the container for the component of the ENU point that lays on the axis pointing North
-     * @param u the container for the component of the ENU point that lays on the axis pointing Up
+     * @param e the container for the component of the ENU point that lies on the axis pointing East
+     * @param n the container for the component of the ENU point that lies on the axis pointing North
+     * @param u the container for the component of the ENU point that lies on the axis pointing Up
     */
     void GPStoENU(double lat, double lon, double alt, 
                     double &e, double &n, double &u) {
 
-        // converting the LLA coordinates in ECEF coordinates
+        // converting the LLA coordinates to ECEF coordinates
         double X_p, Y_p, Z_p;
         GPStoECEF(lat, lon, alt, X_p, Y_p, Z_p);
 
-        // computing the subtraction of the reference point from the given point, both in ECEF coordinates
+        // computing the difference between the reference point from the given point, both in ECEF coordinates
         double  dx = X_p - X_r,
                 dy = Y_p - Y_r,
                 dz = Z_p - Z_r;
@@ -122,7 +121,7 @@ private:
     }
 
     /**
-     * Computes an approximation of the robot heading given the movement on the North and East axis.
+     * Computes an approximation of the robot heading given the most recent movement on the North and East axis.
      * If the robot hasn't moved, the last heading will be returned (which is set to zero at the beginning).
      * 
      * @param dEast the component on the East axis of the robot movement
@@ -144,15 +143,15 @@ private:
 public:
     /**
      * Callback function triggered when a GPS message is received.
-     * Converts the location from LLA to ENU coordinates and publish an
+     * Converts the location from LLA to ENU coordinates and publishes an
      * odometry message representing the robot location according to the GPS
      * 
      * @param msg a pointer to the message containing the GPS data
     */
     void fixCallback(const sensor_msgs::NavSatFixConstPtr& msg) {
         // Copying the message information in the new message
-        // (I decided to mantain the "old" message's timestamp because
-        // that time is linked to the location and that location was
+        // (I decided to maintain the "old" message's timestamp because
+        // it is linked to the location, which was
         // measured at that precise time)
         nav_msgs::Odometry currentOdom;
         currentOdom.header.seq = msg->header.seq;
@@ -162,12 +161,12 @@ public:
         std::string frame_id = "gps_odom";
         currentOdom.header.frame_id = frame_id.c_str();
 
-        // converting the LLA coordinates to ENU coordinates and
-        // putting them in the new message
+        // converting the LLA coordinates to ENU coordinates
         double e,n,u;
         GPStoENU(msg->latitude, msg->longitude, msg->altitude, e,n,u);
 
 #if ROTATE_REF_SYSTEM_TO_MATCH_WHEEL_ODOMETRY
+        // rotating the ENU reference point by ROTATION_ANGLE degrees counter-clockwise around the U axis (if required)
         double x,y;
 
         x = e * cosDeg(ROTATION_ANGLE) - n * sinDeg(ROTATION_ANGLE);
@@ -187,7 +186,7 @@ public:
         lastHeading = computeHeading(dEast, dNorth);
 
         // building the quaternion representing the robot orientation
-        // (pitch not included in the computation)
+        // (pitch is not included in the computation because most of the time that value is uninteresting)
         tf::Quaternion q;
         q.setRPY(0, 0, lastHeading);
         currentOdom.pose.pose.orientation.x = q.getX();

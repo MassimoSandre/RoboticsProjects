@@ -27,8 +27,8 @@ private:
 
 public:
     /**
-     * Callback function triggered when a parameter is updated.
-     * It switch the frame to the desired one.
+     * Callback function triggered when the frame parameter is updated.
+     * It switches the stored frame to the desired one.
      * 
      * @param config an object containing the param(s)
      * @param level
@@ -52,7 +52,7 @@ public:
         newMsg.header.frame_id = this->frame.c_str();
 
         // setting the message time stamp to now. If this operation is skipped
-        // rviz won't display the points because the message is deemed too old.
+        // rviz doesn't display the points because the message is considered too old.
         newMsg.header.stamp = ros::Time::now();
 
         pointsPub.publish(newMsg);
