@@ -23,7 +23,7 @@
     <!-- LAUNCH lidar_remap NODE -->
     <node pkg="first_project" name="lidar_remap" type="lidar_remap"/>
 
-    <!-- LAUNCH CLEAR rviz -->
+    <!-- LAUNCH CLEAN rviz -->
     <!-- <node name="rviz" pkg="rviz" type="rviz" /> -->
 
     <!-- LAUNCH rviz LOADING CONFIG FROM FILE -->

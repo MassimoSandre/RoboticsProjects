@@ -6,10 +6,17 @@
 
 // Set ROTATE_REF_SYSTEM_TO_MATCH_WHEEL_ODOMETRY = false    to use the ENU reference system for the GPS odometry.
 // Set ROTATE_REF_SYSTEM_TO_MATCH_WHEEL_ODOMETRY = true     to make the GPS odometry reference system "match" the wheel odometry one
-//                                                          The new reference system is not ENU anymore. Used to check that the two measurements descirbe
+//                                                          The new reference system is not ENU anymore. Used to check that the two measurements describe
 //                                                          the same movement. The wheel odometry tend to diverge from the actual path because of errors
 #define ROTATE_REF_SYSTEM_TO_MATCH_WHEEL_ODOMETRY false
 #define ROTATION_ANGLE 130
+
+// Minimum distance that the robot needs to travel in order for heading to be computed
+// if the minimum distance isn't reached, the previously computed heading will be kept.
+// a value of 0.0d basically means that every (non-zero) movement will be considered valid and heading will be computed.
+// increasing the value helps to mitigate the spinning effect of the GPS odometry
+// at the beginning and at the end of the bag. 
+#define DISTANCE_THRESHOLD_TO_COMPUTE_HEADING 0.0d
 
 #define PI 3.14159d
 #define DEG_TO_RAD PI/180.0d
@@ -121,8 +128,20 @@ private:
     }
 
     /**
+     * Computes the distance travelled on a plane given the vertical and horizontal components.
+     * It serves as an helper method for computHeading.
+     * 
+     * @param dx X/East axis component
+     * @param dy y/North axis component
+    */
+    static double dist(double dx, double dy) {
+        return sqrt(dx*dx + dy*dy);
+    }
+
+    /**
      * Computes an approximation of the robot heading given the most recent movement on the North and East axis.
-     * If the robot hasn't moved, the last heading will be returned (which is set to zero at the beginning).
+     * If the robot hasn't moved (enough) on the East-North plane, the last heading will be returned 
+     * (which is set to zero at the creation of the node).
      * 
      * @param dEast the component on the East axis of the robot movement
      * @param dNorth the component on the North axis of the robot movement
@@ -130,7 +149,7 @@ private:
     */
     double computeHeading(double dEast, double dNorth) {
         // no movement detected => lastHeading is the best approximation for the robot current heading
-        if (dEast == 0 && dNorth == 0) {
+        if (dist(dEast, dNorth) < DISTANCE_THRESHOLD_TO_COMPUTE_HEADING) {
             return lastHeading;
         } 
 
