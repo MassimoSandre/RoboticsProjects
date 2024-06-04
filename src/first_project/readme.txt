@@ -7,6 +7,6 @@ needs to travel in order for heading to be computed. Increasing the value helps 
 mitigate the spinning effect shown in the gps odometry at the beginning and at the end
 of the bag.
 
-pitch value in the robot orietation isn't computed.
+pitch value in the robot orientation isn't computed.
 I chose not to compute it because the wheel odometry doesn't provide that value.
-Also, most of the robot movement doens't involve many pitch rotation.
+Also, most of the robot movement doesn't involve many pitch rotations.

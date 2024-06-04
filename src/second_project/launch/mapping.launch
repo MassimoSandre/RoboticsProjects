@@ -1,0 +1,40 @@
+<launch>
+    <param name="/use_sim_time" value="true"/>
+
+
+    <node pkg="slam_toolbox" type="async_slam_toolbox_node" name="slam_toolbox" output="screen">
+        <rosparam command="load" file="$(find second_project)/config/slam_toolbox_config.yaml" />
+    </node>
+    
+    <!-- 
+    <node pkg="first_project" type="odom_to_tf" name="odom_to_tf">
+        <remap from="input_odom" to="odom"/>
+        <param name="root_frame" type="str" value="map" />
+        <param name="child_frame" type="str" value="odom" />
+    </node>
+    -->
+
+    <node pkg="second_project" type="odometry_to_tf" name="odometry_to_tf">
+        <remap from="input_odom" to="ugv/odom"/>
+        <param name="root_frame" type="str" value="odom" />
+        <param name="child_frame" type="str" value="base_footprint" />
+    </node>
+
+    <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pointcloud_to_laserscan" output="screen">
+    <remap from="cloud_in" to="/ugv/rslidar_points"/>
+    <remap from="scan" to="/laserscan"/>
+    <param name="min_height" value="0.2"/>
+    <param name="max_height" value="0.6"/>
+    <param name="angle_increment" value="0.004"/>
+    <param name="range_max" value="20.0"/>
+  </node>
+
+
+    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find second_project)/rviz/mapping.rviz" />
+
+  <node name="rqt_graph" pkg="rqt_graph" type="rqt_graph"/>
+
+  
+  <node pkg="tf2_ros" type="static_transform_publisher" name="lidar_link"  args=" 0  0 0  0 0 0 1 base_footprint rslidar"/>
+  
+</launch>
