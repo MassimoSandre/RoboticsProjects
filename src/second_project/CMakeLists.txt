@@ -16,3 +16,6 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 
 add_executable(odometry_to_tf src/odometry_to_tf.cpp)
 target_link_libraries(odometry_to_tf ${catkin_LIBRARIES})
+
+add_executable(goal_publisher src/goal_publisher.cpp)
+target_link_libraries(goal_publisher ${catkin_LIBRARIES})
