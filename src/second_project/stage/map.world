@@ -35,6 +35,6 @@ floorplan
 turtlebot
 (
   pose [ 0.0 0.0 0.0 0.0 ]
-  name "robot"
+  name "scout-mini"
   color "red"
 )
