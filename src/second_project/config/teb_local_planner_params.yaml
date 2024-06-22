@@ -9,7 +9,7 @@ TebLocalPlannerROS:
   dt_ref: 0.3
   dt_hysteresis: 0.1
   global_plan_overwrite_orientation: True
-  max_global_plan_lookahead_dist: 3.0
+  max_global_plan_lookahead_dist: 5.0
   feasibility_check_no_poses: 5
 
   # Robot
@@ -32,10 +32,10 @@ TebLocalPlannerROS:
   
   footprint_model:
     type: "polygon"
-    vertices: [[-0.3, -0.2], [-0.3, 0.2], [0.3, 0.2], [0.3, -0.2]]  # replace these with your robot's dimensions
+    vertices: [[-0.306, -0.290], [-0.306, 0.290], [0.306, 0.290], [0.306, -0.290]]
 
   # Obstace avoidance
-  min_obstacle_dist: 0.02   # this is the minimum distance from obstacles, change it as needed.
+  min_obstacle_dist: 0.05   # this is the minimum distance from obstacles, change it as needed.
   include_costmap_obstacles: True
   costmap_obstacles_behind_robot_dist: 1.0
   obstacle_poses_affected: 30
